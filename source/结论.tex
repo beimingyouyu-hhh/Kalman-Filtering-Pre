@@ -1,0 +1,18 @@
+%================================================================
+\section{结论}
+%================================================================
+
+\begin{frame}
+    \frametitle{总结}
+
+    \begin{enumerate}
+        \item \textbf{有效性}：卡尔曼滤波利用了系统的\textbf{冗余信息}（模型预测 + 传感器观测），从而降低了整体的不确定性。
+        \item \textbf{高效性}：递归算法，只需存储上一刻状态，非常适合\textbf{嵌入式系统}及\textbf{实时控制}。
+        \item \textbf{局限性}：
+              \begin{itemize}
+                  \item 假设系统是线性的 (Linear)。
+                  \item 假设噪声是高斯的 (Gaussian)。
+              \end{itemize}
+        \item \textbf{拓展}：面对非线性系统，可以使用\textbf{扩展卡尔曼滤波 (EKF)}。
+    \end{enumerate}
+\end{frame}

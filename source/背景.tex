@@ -1,0 +1,41 @@
+%================================================================
+\section{背景引入}
+%================================================================
+
+\begin{frame}
+	\frametitle{现实世界的困境：不确定性}
+	\begin{columns}
+		\column{0.6\textwidth}
+		在信息工程与控制领域，我们面临两个永恒的问题：
+		\begin{itemize}
+			\item \textbf{不准确的模型 (Process Noise)}：
+			      \begin{itemize}
+				      \item 摩擦力、风阻难以完美建模
+				      \item 积分误差随时间累积（Dead Reckoning Drifting）
+			      \end{itemize}
+			\item \textbf{不准确的观测 (Measurement Noise)}：
+			\item GPS 信号多径效应
+			\item 传感器热噪声
+		\end{itemize}
+
+		\column{0.4\textwidth}
+		\begin{block}{核心问题}
+			当我们既不能完全相信\textbf{推算}，也不能完全相信\textbf{观测}时，如何获知系统的\textbf{真实状态}？
+		\end{block}
+	\end{columns}
+\end{frame}
+
+\begin{frame}
+	\frametitle{卡尔曼滤波 (Kalman Filter) 的诞生}
+	\begin{itemize}
+		\item \textbf{提出者}：Rudolf E. Kalman (1960)
+		\item \textbf{核心论文}：\textit{A New Approach to Linear Filtering and Prediction Problems}
+		\item \textbf{本质}：
+		      \begin{itemize}
+			      \item 并不是为了滤除某些频率（不同于低通/高通滤波器）。
+			      \item 是一种\textbf{最优递归估计算法} (Optimal Recursive Estimator)。
+			      \item 在最小均方误差 (MMSE) 准则下，对系统状态进行最优估计。
+		      \end{itemize}
+		\item \textbf{应用场景}：阿波罗登月导航、雷达目标追踪、导弹制导、股市预测。
+	\end{itemize}
+\end{frame}

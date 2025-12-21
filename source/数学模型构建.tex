@@ -1,0 +1,78 @@
+%================================================================
+\section{数学模型构建}
+%================================================================
+
+\begin{frame}
+    \frametitle{1. 状态方程 (预测模型) 深度解析}
+    \begin{equation}
+        \bm{x}_k = \underbrace{\bm{F} \bm{x}_{k-1}}_{\text{惯性演变}} + \underbrace{\bm{B} \bm{u}_k}_{\text{控制输入}} + \underbrace{\bm{w}_k}_{\text{过程噪声}}
+    \end{equation}
+
+    \begin{itemize}
+        \item \textbf{惯性演变 ($\bm{F}\bm{x}_{k-1}$)}：
+              \begin{itemize}
+                  \item \textbf{含义}：基于物理定律的自然推演。如果没有外力和干扰，系统下一刻应该在哪？
+                  \item \textbf{举例}：根据“路程 = 速度 $\times$ 时间”，由上一刻的位置和速度，推算当前时刻的预计位置。
+                  \item $\bm{F}$ (状态转移矩阵) 捕捉了这些确定性的物理规则。
+              \end{itemize}
+
+        \item \textbf{控制输入 ($\bm{B}\bm{u}_k$)}：
+              \begin{itemize}
+                  \item \textbf{含义}：由于我们对系统的干预（Control）所引起的状态改变。
+                  \item \textbf{举例}：司机踩下油门 ($\bm{u}_k$)，通过车辆动力学模型 ($\bm{B}$) 转化为加速度，从而改变车辆的速度和位置。
+              \end{itemize}
+
+        \item \textbf{过程噪声 ($\bm{w}_k$)}：
+              \begin{itemize}
+                  \item \textbf{含义}：物理模型中未考虑到的现实扰动（如侧风、路面打滑）。
+              \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{2. 观测方程 (测量模型) 深度解析}
+    \begin{equation}
+        \bm{z}_k = \underbrace{\bm{H} \bm{x}_k}_{\text{理想观测}} + \underbrace{\bm{v}_k}_{\text{测量噪声}}
+    \end{equation}
+
+    \begin{itemize}
+        \item \textbf{理想观测 ($\bm{H}\bm{x}_k$)}：
+              \begin{itemize}
+                  \item \textbf{含义}：状态空间的映射与降维。如果传感器完美无瑕，它应该读到什么数值？
+                  \item \textbf{矩阵作用}：系统状态 $\bm{x}$ 可能包含 [位置, 速度, 加速度] ($3 \times 1$)，但 GPS 传感器 $\bm{z}$ 只能读取 [位置] ($1 \times 1$)。
+                  \item $\bm{H}$ (观测矩阵) 就是一个提取器：例如 $\begin{bmatrix} 1 & 0 & 0 \end{bmatrix} \times \begin{bmatrix} pos \\ vel \\ acc \end{bmatrix} = pos$。
+              \end{itemize}
+
+        \item \textbf{测量噪声 ($\bm{v}_k$)}：
+              \begin{itemize}
+                  \item \textbf{含义}：传感器自身的“不靠谱”程度。包括电子热噪声、量化误差或环境干扰。
+                  \item 我们假设它是白噪声，服从 $N(0, \bm{R})$。
+              \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{符号含义解析}
+    \small
+    \begin{table}
+        \centering
+        \begin{tabular}{cll}
+            \toprule
+            符号         & 含义                   & 维度           \\
+            \midrule
+            $\bm{x}_k$ & $k$时刻的状态向量 (位置, 速度等) & $n \times 1$ \\
+            $\bm{F}$   & 状态转移矩阵 (物理规律)        & $n \times n$ \\
+            $\bm{u}_k$ & 外部控制量 (如加速度输入)       & $l \times 1$ \\
+            $\bm{z}_k$ & $k$时刻的观测向量 (传感器读数)   & $m \times 1$ \\
+            $\bm{H}$   & 观测矩阵 (映射关系)          & $m \times n$ \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \vspace{0.5cm}
+    \textbf{关键假设：} 噪声服从高斯分布 (Gaussian Distribution)
+    \begin{itemize}
+        \item 过程噪声 $\bm{w}_k \sim N(0, \bm{Q})$
+        \item 测量噪声 $\bm{v}_k \sim N(0, \bm{R})$
+    \end{itemize}
+\end{frame}

@@ -1,0 +1,63 @@
+%================================================================
+\section{工程应用与仿真}
+%================================================================
+
+\begin{frame}
+    \frametitle{仿真案例：一维小车位置追踪}
+    \textbf{场景假设：}
+    \begin{itemize}
+        \item 小车做匀速运动，速度 $v=1m/s$。
+        \item 过程噪声 $\bm{Q}$：路面颠簸导致速度微小波动。
+        \item 测量噪声 $\bm{R}$：GPS 定位误差 $\pm 5m$。
+    \end{itemize}
+
+\end{frame}
+\begin{frame}
+    \frametitle{仿真案例：一维小车位置追踪}
+    % \vspace{-5cm}
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width = .5\textwidth]{Kal.png}
+        \caption{利用Matlab模拟卡尔曼滤波}
+    \end{figure}
+\end{frame}
+\begin{frame}
+    \frametitle{参数 $\bm{Q}$ 与 $\bm{R}$ 的调节策略}
+    在信息工程实践中，$\bm{F}$ 和 $\bm{H}$ 通常由物理系统决定，但 $\bm{Q}$ 和 $\bm{R}$ 是调试的关键。
+
+    \begin{columns}
+        \column{0.5\textwidth}
+        \begin{block}{信任模型 ($\bm{Q}$ 小, $\bm{R}$ 大)}
+            \begin{itemize}
+                \item 滤波结果非常平滑
+                \item 对突变反应滞后 (Lag)
+            \end{itemize}
+        \end{block}
+
+        \column{0.5\textwidth}
+        \begin{block}{信任观测 ($\bm{Q}$ 大, $\bm{R}$ 小)}
+            \begin{itemize}
+                \item 紧跟观测值变化
+                \item 引入较多噪声 (Noise)
+            \end{itemize}
+        \end{block}
+    \end{columns}
+
+    \vspace{0.5cm}
+    \textbf{结论：} 调参本质上是在\textbf{响应速度}与\textbf{平滑度}之间做权衡。
+\end{frame}
+
+\begin{frame}
+    \frametitle{进阶：多传感器融合 (Sensor Fusion)}
+    卡尔曼滤波是多传感器融合的基石。
+
+    \textbf{案例：无人机姿态解算}
+    \begin{itemize}
+        \item \textbf{陀螺仪 (Gyro)}：短时精度高，长时有积分漂移。
+        \item \textbf{加速度计 (Accel)}：静态精度高，动态噪声大。
+        \item \textbf{融合方案}：利用 Kalman Filter 融合两者数据。
+              \begin{equation*}
+                  \text{Optimal Angle} = K \cdot \text{Accel} + (1-K) \cdot \text{Gyro}
+              \end{equation*}
+    \end{itemize}
+\end{frame}

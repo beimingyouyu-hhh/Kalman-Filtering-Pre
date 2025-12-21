@@ -1,0 +1,152 @@
+%================================================================
+\section{核心算法}
+%================================================================
+
+\begin{frame}
+    \frametitle{算法流程总览}
+    卡尔曼滤波是一个\textbf{“预测 (Predict) —— 更新 (Update)”} 的循环过程。
+    \vspace{0.5cm}
+
+    \begin{center}
+        \fbox{\parbox{0.8\textwidth}{\centering
+                \textbf{Step 1: 预测} \\
+                (根据上一刻状态，猜这一刻在哪) \\
+                $\downarrow$ \\
+                \textbf{Step 2: 计算卡尔曼增益} \\
+                (决定信模型多一点，还是信传感器多一点) \\
+                $\downarrow$ \\
+                \textbf{Step 3: 更新} \\
+                (结合观测值，修正刚才的猜测)
+            }}
+    \end{center}
+\end{frame}
+
+\begin{frame}
+    \frametitle{第一阶段：时间更新 (预测)}
+    在还未获得传感器数据之前，基于物理模型进行的\textbf{先验估计}：
+
+    \begin{alertblock}{1. 状态预测}
+        \begin{equation}
+            \hat{\bm{x}}_k^- = \bm{F} \hat{\bm{x}}_{k-1} + \bm{B} \bm{u}_k
+        \end{equation}
+        \small 注：上标 $^-$ 表示先验 (A Priori) 估计。
+    \end{alertblock}
+
+    \begin{alertblock}{2. 协方差预测 (误差传播)}
+        \begin{equation}
+            \bm{P}_k^- = \bm{F} \bm{P}_{k-1} \bm{F}^T + \bm{Q}
+        \end{equation}
+        \small $\bm{P}$ 代表估计的不确定性。加上 $\bm{Q}$ 表示预测过程引入了新的不确定性。
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}
+    \frametitle{关键步骤：卡尔曼增益 (Kalman Gain) —— 1. 思路篇}
+
+    \begin{block}{核心思想：不确定性的权衡}
+        卡尔曼增益 $\bm{K}_k$ 的本质是一个\textbf{动态权衡因子 (Weighting Factor)}。
+        它时刻在问一个问题：
+        \vspace{0.3cm}
+        \begin{center}
+            \textit{“现在的预测误差 ($\bm{P}_k^-$) 和 观测误差 ($\bm{R}$)，哪一个更小？”}
+        \end{center}
+    \end{block}
+
+    \begin{itemize}
+        \item \textbf{逻辑：} 谁的方差小（信息量大、更可信），我就偏向谁。
+        \item \textbf{动态性：}
+              \begin{itemize}
+                  \item 这不是一个固定的常数（如互补滤波中的 $\alpha=0.98$）。
+                  \item 它随时间变化，每一次迭代都会根据上一次的置信度自动调整。
+              \end{itemize}
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{关键步骤：卡尔曼增益 (Kalman Gain) —— 2. 矩阵直觉篇}
+    为什么公式里有那么多 $\bm{H}^T$ 和逆矩阵？
+    \begin{equation*}
+        \bm{K}_k = \underbrace{\bm{P}_k^- \bm{H}^T}_{\text{相关性}} \underbrace{(\bm{H} \bm{P}_k^- \bm{H}^T + \bm{R})^{-1}}_{\text{归一化}}
+    \end{equation*}
+    \begin{itemize}
+        \item \textbf{空间投影问题}：
+              \begin{itemize}
+                  \item 状态误差 $\bm{P}_k^-$ 在\textbf{状态空间} (n维)。
+                  \item 观测误差 $\bm{R}$ 在\textbf{测量空间} (m维)。
+                  \item 我们不能直接把它们相加，必须把 $\bm{P}_k^-$ 投影到测量空间。
+              \end{itemize}
+        \item \textbf{$\bm{H} \bm{P}_k^- \bm{H}^T$}：这是预测误差在\textbf{测量空间}的投影。即“如果在状态空间有这么多不确定性，对应到传感器读数上会有多大波动”。
+        \item \textbf{分母求逆}：$(\bm{S})^{-1}$ 相当于除以“总不确定性”。
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{关键步骤：卡尔曼增益 (Kalman Gain) —— 3. 算法篇}
+
+    \begin{block}{3. 计算卡尔曼增益}
+        \begin{equation}
+            \bm{K}_k = \bm{P}_k^- \bm{H}^T (\bm{H} \bm{P}_k^- \bm{H}^T + \bm{R})^{-1}
+        \end{equation}
+    \end{block}
+
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{复杂矩阵运算的直观类比：}\\
+        假设是一维标量系统（$H=1$）：
+        $$ K_k = \frac{P_k^-}{P_k^- + R} $$
+        \column{0.5\textwidth}
+        \textbf{含义解析：}
+        \begin{itemize}
+            \item \textbf{分子} ($P_k^-$)：预测误差的方差。
+            \item \textbf{分母} ($P_k^- + R$)：总误差（预测+观测）。
+            \item \textbf{结果}：预测误差在总误差中的占比。
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}
+    \frametitle{关键步骤：卡尔曼增益 (Kalman Gain) —— 4. 效果篇}
+    通过极限情况，我们可以清晰看到 $\bm{K}_k$ 的调节机制：
+
+    \vspace{0.5cm}
+    \begin{columns}
+        \column{0.48\textwidth}
+        \begin{alertblock}{情况 A: 传感器极准 ($\bm{R} \to 0$)}
+            \begin{itemize}
+                \item 此时 $K_k \approx \frac{P}{P} = 1$ (最大)。
+                \item 状态更新变为：\\
+                      $\hat{x}_k = \hat{x}_k^- + 1 \cdot (z_k - \hat{x}_k^-) = z_k$
+                \item \textbf{结论}：完全信任观测值，忽略模型预测。
+            \end{itemize}
+        \end{alertblock}
+
+        \column{0.48\textwidth}
+        \begin{exampleblock}{情况 B: 模型极准 ($\bm{P}_k^- \to 0$)}
+            \begin{itemize}
+                \item 此时 $K_k \approx \frac{0}{0+R} = 0$ (最小)。
+                \item 状态更新变为：\\
+                      $\hat{x}_k = \hat{x}_k^- + 0 = \hat{x}_k^-$
+                \item \textbf{结论}：完全信任模型预测，忽略传感器波动。
+            \end{itemize}
+        \end{exampleblock}
+    \end{columns}
+\end{frame}
+
+\begin{frame}
+    \frametitle{第二阶段：完成测量更新}
+    算出增益 $\bm{K}_k$ 后，我们就可以融合数据并更新系统信心。
+
+    \begin{block}{4. 状态更新 (后验估计)}
+        \begin{equation}
+            \hat{\bm{x}}_k = \hat{\bm{x}}_k^- + \bm{K}_k \underbrace{(\bm{z}_k - \bm{H} \hat{\bm{x}}_k^-)}_{\text{残差 (Innovation)}}
+        \end{equation}
+        \small \textbf{最优估计 = 预测 + 修正量}。残差代表了“观测值与预测值的偏差”。
+    \end{block}
+
+    \begin{block}{5. 协方差更新}
+        \begin{equation}
+            \bm{P}_k = (\bm{I} - \bm{K}_k \bm{H}) \bm{P}_k^-
+        \end{equation}
+        \small 更新系统的不确定性。因为融合了新信息，通常 $\bm{P}_k < \bm{P}_k^-$，表示我们对系统的状态越来越有把握。
+    \end{block}
+\end{frame}

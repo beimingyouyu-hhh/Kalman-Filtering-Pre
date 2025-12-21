@@ -1,0 +1,165 @@
+%================================================================
+\section{扩展卡尔曼滤波 (EKF)}
+%================================================================
+
+\begin{frame}
+    \frametitle{1. 线性系统的局限性}
+    \begin{alertblock}{标准 KF 的致命弱点}
+        标准卡尔曼滤波假设系统是\textbf{线性 (Linear)} 的：
+        $$ \bm{x}_k = \bm{F}\bm{x}_{k-1} \quad \text{和} \quad \bm{z}_k = \bm{H}\bm{x}_k $$
+    \end{alertblock}
+
+    \textbf{然而，现实世界充满了非线性：}
+    \begin{itemize}
+        \item \textbf{机器人运动}：$x_{new} = x_{old} + v \cdot \cos(\theta) \cdot \Delta t$ （包含三角函数）
+        \item \textbf{雷达观测}：$r = \sqrt{x^2 + y^2}$ （包含平方根）
+    \end{itemize}
+
+    \vspace{0.2cm}
+    \textbf{问题：} 高斯分布经过非线性变换后，\textbf{不再是高斯分布}（形状会扭曲），导致标准 KF 的公式失效。
+\end{frame}
+
+\begin{frame}
+    \frametitle{2. 解决思路：线性化 (Linearization)}
+    既然非线性太难处理，我们能不能在\textbf{局部}把它看作线性的？
+
+    \begin{block}{泰勒级数展开 (Taylor Series Expansion)}
+        对于非线性函数 $f(x)$，我们在估计点 $\hat{x}$ 附近做一阶展开：
+        \begin{equation}
+            f(x) \approx f(\hat{x}) + \underbrace{\frac{\partial f}{\partial x}\bigg|_{x=\hat{x}}}_{\text{切线斜率}} \cdot (x - \hat{x})
+        \end{equation}
+    \end{block}
+
+    \begin{itemize}
+        \item 我们抛弃高阶项，只保留一阶导数。
+        \item 用\textbf{切线}来近似\textbf{曲线}。
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{3. 核心工具：雅可比矩阵 (Jacobian Matrix)}
+    在多维系统中，导数变成了\textbf{雅可比矩阵}。它是 EKF 的核心。
+
+    假设状态转移函数为 $\bm{x}_k = f(\bm{x}_{k-1}, \bm{u}_k)$，则雅可比矩阵 $\bm{F}_k$ 为：
+
+    \begin{equation}
+        \bm{F}_k = \frac{\partial f}{\partial \bm{x}} =
+        \begin{bmatrix}
+            \frac{\partial f_1}{\partial x_1} & \frac{\partial f_1}{\partial x_2} & \cdots \\
+            \frac{\partial f_2}{\partial x_1} & \frac{\partial f_2}{\partial x_2} & \cdots \\
+            \vdots                            & \vdots                            & \ddots
+        \end{bmatrix}
+    \end{equation}
+
+    \textbf{物理意义：} 描述了输入微小变化如何影响输出的每一个维度。
+\end{frame}
+
+\begin{frame}
+    \frametitle{4. EKF 算法流程的变化 (对比 KF)}
+    EKF 的步骤与 KF 几乎一样，区别在于\textbf{如何传递均值}和\textbf{如何传递协方差}。
+
+    \begin{table}
+        \centering
+        \small
+        \begin{tabular}{l|c|c}
+            \toprule
+            步骤             & 标准 KF (线性)                                            & 扩展 KF (非线性)                                                                         \\
+            \midrule
+            \textbf{状态预测}  & $\bm{x}^- = \bm{F}\bm{x}$                             & $\bm{x}^- = \mathbf{f}(\bm{x}, \bm{u})$ \textcolor{blue}{(直接代入函数)}                  \\
+            \textbf{协方差预测} & $\bm{P}^- = \bm{F}\bm{P}\bm{F}^T + \bm{Q}$            & $\bm{P}^- = \mathbf{F_k}\bm{P}\mathbf{F_k}^T + \bm{Q}$ \textcolor{red}{(用雅可比)}      \\
+            \midrule
+            \textbf{卡尔曼增益} & $\bm{K} = \bm{P}^-\bm{H}^T(\dots)^{-1}$               & $\bm{K} = \bm{P}^-\mathbf{H_k}^T(\mathbf{H_k}\bm{P}^-\mathbf{H_k}^T + \bm{R})^{-1}$ \\
+            \textbf{状态更新}  & $\bm{x} = \bm{x}^- + \bm{K}(\bm{z} - \bm{H}\bm{x}^-)$ & $\bm{x} = \bm{x}^- + \bm{K}(\bm{z} - \mathbf{h}(\bm{x}^-))$                         \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+\end{frame}
+
+\begin{frame}
+    \frametitle{5. 经典案例：雷达追踪 (Radar Tracking)}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{状态向量 (直角坐标系)：} \\
+        $\bm{x} = [p_x, p_y, v_x, v_y]^T$ \\
+        (飞机的位置和速度)
+
+        \vspace{0.3cm}
+        \textbf{观测向量 (极坐标系)：} \\
+        $\bm{z} = [\rho, \phi, \dot{\rho}]^T$ \\
+        (雷达测量的距离、角度、径向速度)
+
+        \column{0.5\textwidth}
+        \textbf{非线性观测函数 $h(\bm{x})$：}
+        \begin{itemize}
+            \item 距离：$\rho = \sqrt{p_x^2 + p_y^2}$
+            \item 角度：$\phi = \arctan(p_y / p_x)$
+        \end{itemize}
+    \end{columns}
+
+    \vspace{0.5cm}
+    \begin{block}{问题}
+        $p_x$ 和 $p_y$ 是状态，但在观测方程里被平方和求根了。这就是典型的非线性！必须求雅可比矩阵 $\bm{H}_j$。
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{6. 雷达雅可比矩阵的计算}
+    我们需要对 $h(\bm{x})$ 求偏导数来得到 $\bm{H}_j$：
+
+    \small
+    \begin{equation}
+        \bm{H}_j = \frac{\partial h}{\partial \bm{x}} =
+        \begin{bmatrix}
+            \frac{\partial \rho}{\partial p_x} & \frac{\partial \rho}{\partial p_y} & 0 & 0 \\
+            \frac{\partial \phi}{\partial p_x} & \frac{\partial \phi}{\partial p_y} & 0 & 0
+        \end{bmatrix}
+        =
+        \begin{bmatrix}
+            \frac{p_x}{\sqrt{p_x^2+p_y^2}} & \frac{p_y}{\sqrt{p_x^2+p_y^2}} & 0 & 0 \\
+            \frac{-p_y}{p_x^2+p_y^2}       & \frac{p_x}{p_x^2+p_y^2}        & 0 & 0
+        \end{bmatrix}
+    \end{equation}
+
+    \vspace{0.3cm}
+    \textbf{意义：} 这个矩阵把\textbf{位置的不确定性}（直角坐标误差），投影到了\textbf{观测的不确定性}（距离和角度误差）上。
+\end{frame}
+
+\begin{frame}
+    \frametitle{7. EKF 的优缺点分析}
+
+    \begin{block}{优点 (Why use it?)}
+        \begin{itemize}
+            \item \textbf{事实标准}：目前导航系统（GPS/IMU 融合）、机器人定位 (SLAM) 的首选基础算法。
+            \item \textbf{计算量适中}：比粒子滤波 (Particle Filter) 快得多。
+        \end{itemize}
+    \end{block}
+
+    \begin{alertblock}{缺点 (Watch out!)}
+        \begin{itemize}
+            \item \textbf{发散风险}：如果线性化点选得不好（初始估计太差），泰勒展开误差会很大，导致滤波器发散。
+            \item \textbf{繁琐的雅可比}：对于复杂的系统，手算雅可比矩阵非常痛苦且容易出错。
+        \end{itemize}
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}
+    \frametitle{8. 超越 EKF：无迹卡尔曼滤波 (UKF)}
+    当非线性极其严重时，EKF 的线性化误差无法接受。
+
+    \begin{columns}
+        \column{0.6\textwidth}
+        \textbf{UKF (Unscented Kalman Filter) 思路：}
+        \begin{itemize}
+            \item 不去线性化函数（不算雅可比）。
+            \item 而是\textbf{近似概率分布}。
+            \item 选取几个关键点（Sigma Points），把它们扔进非线性函数里算一算，然后再算出新的均值和方差。
+        \end{itemize}
+
+        \column{0.4\textwidth}
+        \begin{block}{核心理念}
+            \small
+            “近似概率分布比近似非线性函数要容易得多。”
+            \\ —— Julier \& Uhlmann
+        \end{block}
+    \end{columns}
+\end{frame}

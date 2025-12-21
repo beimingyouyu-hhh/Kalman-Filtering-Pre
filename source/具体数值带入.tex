@@ -1,0 +1,80 @@
+%================================================================
+\section{数值推演实例}
+%================================================================
+
+\begin{frame}
+    \frametitle{场景设定：无人机悬停高度估计}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{场景：}
+        \begin{itemize}
+            \item 我们想知道无人机的真实高度 $x$。
+            \item 无人机正在悬停，理论上不动，但有风吹（过程噪声）。
+            \item 使用气压计测量高度，但有误差（测量噪声）。
+        \end{itemize}
+
+        \column{0.5\textwidth}
+        \textbf{参数初始化 ($t=0$)：}
+        \begin{itemize}
+            \item \textbf{初始估计} $\hat{x}_0 = 10m$。
+            \item \textbf{初始不确定性} $P_0 = 5$ (不太确信)。
+        \end{itemize}
+        \textbf{系统参数：}
+        \begin{itemize}
+            \item 状态转移 $F=1$ (不动)。
+            \item 过程噪声 $Q=1$。
+            \item 测量噪声 $R=4$ (传感器一般)。
+            \item 观测矩阵 $H=1$ (直接测高度)。
+        \end{itemize}
+    \end{columns}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Step 1: 预测 (Prediction) @ t=1}
+    还没看传感器，先根据物理规律猜。
+
+    \begin{block}{1. 状态预测}
+        $$ \hat{x}_1^- = F \hat{x}_0 = 1 \times 10 = 10 $$
+        \small (我猜它还在 10m 处)
+    \end{block}
+
+    \begin{block}{2. 协方差预测}
+        $$ P_1^- = F P_0 F^T + Q = 1 \times 5 \times 1 + 1 = 6 $$
+        \small (如果不看传感器，不确定性从 5 增加到了 6，因为风在吹)
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Step 2: 计算卡尔曼增益 @ t=1}
+    现在传感器读数来了：$\bm{z}_1 = 12m$。
+
+    \begin{block}{3. 计算增益 K}
+        $$ K_1 = \frac{P_1^- H^T}{H P_1^- H^T + R} = \frac{6 \times 1}{1 \times 6 \times 1 + 4} = \frac{6}{10} = 0.6 $$
+    \end{block}
+
+    \textbf{解读：}
+    \begin{itemize}
+        \item $K=0.6$ 意味着我们把 \textbf{60\%} 的信任给了观测值(残差)，\textbf{40\%} 保留给预测值。
+        \item 为什么信观测多一点？因为预测误差方差(6) 大于 测量噪声方差(4)。
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Step 3: 更新 (Update) @ t=1}
+    融合预测和观测，得到最优结果。
+
+    \begin{alertblock}{4. 状态更新}
+        $$ \hat{x}_1 = \hat{x}_1^- + K_1 (z_1 - \hat{x}_1^-) $$
+        $$ \hat{x}_1 = 10 + 0.6 \times (12 - 10) = 10 + 1.2 = \mathbf{11.2m} $$
+    \end{alertblock}
+
+    \begin{block}{5. 协方差更新}
+        $$ P_1 = (1 - K_1 H) P_1^- = (1 - 0.6) \times 6 = 0.4 \times 6 = \mathbf{2.4} $$
+    \end{block}
+
+    \textbf{结果：}
+    \begin{itemize}
+        \item 估计值 11.2m 介于 10m 和 12m 之间，偏向观测值。
+        \item 不确定性从 6 骤降至 2.4。滤波让我们更自信了！
+    \end{itemize}
+\end{frame}

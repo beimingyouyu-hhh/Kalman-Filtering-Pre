@@ -1,0 +1,134 @@
+%================================================================
+\section{前沿探索}
+%================================================================
+
+% --- 第一部分：基于顶级综述的算法演进 (Khodarahmi et al., 2023) ---
+
+\begin{frame}
+    \frametitle{1. 算法演进全景 (Based on Top Review)}
+    \small
+    卡尔曼滤波已发展为庞大的家族。针对不同场景，主流算法的特性对比如下\footcite{khodarahmi_review_2023}：
+
+    % 表格：主流算法对比
+    \begin{table}
+        \centering
+        \renewcommand{\arraystretch}{1.2}
+        \resizebox{0.95\textwidth}{!}{
+            \begin{tabular}{l l l l}
+                \toprule
+                \textbf{算法}       & \textbf{核心机制}      & \textbf{优势 (Pros)}   & \textbf{适用场景} \\
+                \midrule
+                \textbf{Basic KF} & 线性递归最小二乘           & 计算极快，线性最优            & 卫星导航，稳态控制     \\
+                \textbf{EKF}      & 泰勒展开线性化 ($\bm{J}$) & 工业标准，适用性广            & 机器人定位 (SLAM)  \\
+                \textbf{UKF}      & 无迹变换 (Sigma点)      & 无需导数，精度更高            & 复杂非线性系统       \\
+                \textbf{IMM}      & 多模型概率交互            & \textbf{搞定机动目标}，平滑切换 & 导弹/无人机追踪      \\
+                \bottomrule
+            \end{tabular}
+        }
+    \end{table}
+\end{frame}
+
+% --- 第二部分：KF 与神经网络的结合 (Feng et al., 2023) ---
+
+\begin{frame}
+    \frametitle{2. 突破瓶颈：混合模型 (Hybrid Models) 的诞生}
+
+    \begin{columns}
+        \column{0.6\textwidth}
+        % 左侧：放流程图（占位符）
+        \centering
+        \begin{figure}
+            % 这里的 hybrid.png 就是您那张流程图
+            % keepaspectratio 保持长宽比，width 设置为栏宽的 95%
+            \includegraphics[width=0.95\textwidth, keepaspectratio]{hybrid.png}
+            \caption{状态估计技术融合路线图\footcite{feng_review_2023}}
+        \end{figure}
+
+        \column{0.4\textwidth}
+        % 右侧：文字解说
+        \textbf{为何要融合？}
+        \begin{itemize}
+            \item \textbf{传统 KF}：依赖精确物理模型，难以处理未知环境。
+            \item \textbf{神经网络 (NN)}：强大的数据拟合能力，但缺乏物理约束。
+        \end{itemize}
+
+        \vspace{0.3cm}
+        \textbf{融合的三种模式：}
+        \begin{enumerate}
+            \small
+            \item \textbf{串联}：互为预处理/后处理。
+            \item \textbf{训练}：KF 优化 NN 权重。
+            \item \textbf{辅助 (Aided)}：\textcolor{red}{\textbf{NN 实时估计 KF 参数 ($\bm{Q}, \bm{R}$)}}。
+        \end{enumerate}
+    \end{columns}
+\end{frame}
+\begin{frame}
+    \frametitle{深度思考：卡尔曼滤波 vs 机器学习}
+    \begin{columns}
+        % 左栏：卡尔曼滤波 (Model-Based)
+        \column{0.48\textwidth}
+        \begin{block}{卡尔曼滤波 (KF)}
+            \centering \textbf{“理性的物理学家”}
+            \begin{itemize}
+                \item \textbf{驱动核心}：物理模型 ($\bm{F}, \bm{H}$) + 概率统计。
+                \item \textbf{透明度}：\textbf{白盒}。每一步都有明确物理含义，可解释性强。
+                \item \textbf{优势}：小样本即可工作，不仅给结果，还给\textbf{置信度} ($\bm{P}$)。
+                \item \textbf{劣势}：模型必须已知且准确。
+            \end{itemize}
+        \end{block}
+
+        % 右栏：机器学习 (Data-Driven)
+        \column{0.48\textwidth}
+        \begin{exampleblock}{机器学习 (ML/NN)}
+            \centering \textbf{“经验丰富的工匠”}
+            \begin{itemize}
+                \item \textbf{驱动核心}：海量数据 + 拟合映射。
+                \item \textbf{透明度}：\textbf{黑盒}。内部权重难以解释。
+                \item \textbf{优势}：能拟合极其复杂的非线性关系，无需懂物理机理。
+                \item \textbf{劣势}：数据饥渴，对未见过的场景泛化能力弱。
+            \end{itemize}
+        \end{exampleblock}
+    \end{columns}
+
+    \vspace{0.4cm}
+    \centering
+    \textbf{融合的哲学：}
+    \fcolorbox{blue}{white}{用 KF 的逻辑框架约束 ML 的发散，用 ML 的拟合能力弥补 KF 的模型缺陷。}
+\end{frame}
+% --- 第三部分：锂电池 SOC 估计应用 ---
+
+\begin{frame}
+    \frametitle{3. 落地应用：锂电池 SOC 状态估计}
+    \small
+    \textbf{背景：} SOC (State of Charge) 是电池管理系统的核心。估算错误会导致过充/过放，造成永久性损伤。
+
+    \vspace{0.3cm}
+    \textbf{核心技术栈 (Tech Stack)：}
+    \begin{columns}[t]
+        \column{0.48\textwidth}
+        \begin{block}{1. 非线性滤波 (NLKFs)}
+            用于处理电池高度非线性的电压特性：
+            \begin{itemize}
+                \item \textbf{EKF / AEKF} (自适应扩展卡尔曼)
+                \item \textbf{UKF / AUKF} (自适应无迹卡尔曼)
+            \end{itemize}
+        \end{block}
+
+        \column{0.48\textwidth}
+        \begin{block}{2. 在线参数辨识}
+            实时更新电池模型参数（如内阻）：
+            \begin{itemize}
+                \item \textbf{RLS} (递归最小二乘法)
+                \item \textbf{PRBM} (多项式回归模型)
+            \end{itemize}
+        \end{block}
+    \end{columns}
+
+    \vspace{0.4cm}
+    \textbf{实验结论：}
+    在宽温域 (-5\textcelsius $\sim$ 45\textcelsius) 测试中，以下组合表现最佳：
+    \begin{center}
+        \fcolorbox{red}{white}{\textbf{PRBM-AUKF} \quad \& \quad \textbf{RLS-AUKF}}
+    \end{center}
+    \footnotesize \textit{* AUKF (Adaptive UKF) 展现了比传统 EKF 更高的精度和鲁棒性。\footcite{hossain_kalman_2022}}
+\end{frame}
