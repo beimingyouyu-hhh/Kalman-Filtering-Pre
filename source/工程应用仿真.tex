@@ -47,17 +47,166 @@
     \textbf{结论：} 调参本质上是在\textbf{响应速度}与\textbf{平滑度}之间做权衡。
 \end{frame}
 
-\begin{frame}
-    \frametitle{进阶：多传感器融合 (Sensor Fusion)}
-    卡尔曼滤波是多传感器融合的基石。
 
-    \textbf{案例：无人机姿态解算}
+
+%################################################################
+% 案例一：信息工程 - 5G/6G 无线信道追踪
+%################################################################
+
+%------- 第一页：背景与痛点 -------
+\begin{frame}
+    \frametitle{信息工程案例 (1/3)：高速移动通信的挑战}
+    \textbf{背景：} 在高铁或车载通信场景（5G/V2X）中，终端的高速移动会产生严重的\textbf{多普勒频移 (Doppler Shift)}。
+    
+    \vspace{0.3cm}
+    \begin{columns}
+        \column{0.6\textwidth}
+        \begin{block}{问题：快时变信道 (Fast Fading)}
+            信道冲激响应 $\bm{h}_k$ 不再是常数，而是随时间快速变化的随机过程。
+            \begin{itemize}
+                \item 传统方法（如最小二乘 LS）：假设信道在一段 block 内不变 $\rightarrow$ \textcolor{red}{失效}。
+                \item 需求：必须利用\textbf{时间相关性}进行实时追踪。
+            \end{itemize}
+        \end{block}
+        \column{0.4\textwidth}
+        \centering
+        \begin{tikzpicture}[scale=0.8]
+            \draw[->] (0,0) -- (4,0) node[right] {$t$};
+            \draw[->] (0,-1.5) -- (0,1.5) node[above] {$|h|$};
+            \draw[blue, thick, domain=0:4, samples=100] plot (\x, {cos(300*\x) * exp(-0.2*\x) + 0.3*rand});
+            \node at (2, -1.8) {\small 剧烈波动的信道增益};
+        \end{tikzpicture}
+    \end{columns}
+\end{frame}
+
+%------- 第二页：数学建模 -------
+\begin{frame}
+    \frametitle{信息工程案例 (2/3)：AR(1) 动力学建模}
+    为了使用 Kalman 滤波，我们需要建立状态方程。文献 \cite{komninakis2002multi} 提出利用一阶自回归模型 (AR1) 近似 Jakes 衰落模型。
+
+    \begin{equation}
+        \text{状态方程：} \quad \bm{h}_k = \alpha \bm{h}_{k-1} + \bm{w}_k
+    \end{equation}
+
     \begin{itemize}
-        \item \textbf{陀螺仪}：短时精度高，长时有积分漂移。
-        \item \textbf{加速度计}：静态精度高，动态噪声大。
-        \item \textbf{融合方案}：利用 Kalman Filter 融合两者数据。
-              \begin{equation*}
-                  \text{Optimal Angle} = K \cdot \text{Accel} + (1-K) \cdot \text{Gyro}
-              \end{equation*}
+        \item $\bm{h}_k$: 复数信道系数（状态量）。
+        \item $\alpha$: \textbf{自相关系数}，由物理环境决定：
+              $$ \alpha = J_0(2\pi f_d T_s) $$
+              \small （$J_0$: 零阶贝塞尔函数, $f_d$: 多普勒频率, $T_s$: 符号周期）
+        \item $\bm{w}_k$: 过程噪声，代表建模误差，方差 $\mathbf{Q} = 1 - |\alpha|^2$。
     \end{itemize}
+
+    \begin{alertblock}{建模的核心思想}
+        不仅仅是“估计”当前值，而是利用 $f_d$ 预测信道的“惯性”变化趋势。
+    \end{alertblock}
+\end{frame}
+
+%------- 第三页：算法优势与对比 -------
+\begin{frame}
+    \frametitle{信息工程案例 (3/3)：KF vs LS 性能对比}
+    我们将卡尔曼滤波 (KF) 与传统的最小二乘 (LS) 估计算法进行对比。
+    
+    \textbf{观测方程：} $y_k = s_k \bm{h}_k + v_k$ （$s_k$ 为已知导频）
+
+    \vspace{0.3cm}
+    \begin{table}
+        \centering
+        \begin{tabular}{l|l|l}
+            \toprule
+            \textbf{特性} & \textbf{最小二乘 (LS)} & \textbf{卡尔曼滤波 (KF)} \\
+            \midrule
+            原理 & 仅基于当前观测 $y_k$ & 融合当前观测 $y_k$ + 历史预测 \\
+            计算量 & 低 ($O(1)$) & 中等 ($O(N^3)$ 矩阵求逆) \\
+            抗噪性 & 差 (随 SNR 线性下降) & \textbf{强 (有效滤除高斯白噪)} \\
+            适用场景 & 静态/慢速环境 & \textbf{高速移动/低信噪比环境} \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+
+    \vspace{0.2cm}
+    \textbf{结论：} KF 能够提供比 LS 高约 \textbf{3dB} 的信噪比增益，显著降低误码率 (BER)。
+\end{frame}
+
+
+%################################################################
+% 案例二：微电子 - MEMS 传感器精度增强
+%################################################################
+
+%------- 第一页：硬件痛点 -------
+\begin{frame}
+    \frametitle{微电子案例 (1/3)：MEMS 传感器的误差源}
+    在微电子制造中，低成本 MEMS 陀螺仪（如手机中的 IMU）受限于工艺，存在两类主要误差 \cite{woodman2007introduction}：
+
+    \begin{columns}
+        \column{0.5\textwidth}
+        \begin{block}{1. 角度随机游走 (White Noise)}
+            \begin{itemize}
+                \item 来源：电子热噪声、机械抖动。
+                \item 特性：高频噪声，均值为0。
+                \item \textbf{KF 对应：} 测量噪声矩阵 $\bm{R}$。
+            \end{itemize}
+        \end{block}
+
+        \column{0.5\textwidth}
+        \begin{block}{2. 零偏不稳定性 (Bias Instability)}
+            \begin{itemize}
+                \item 来源：温度漂移、应力释放。
+                \item 特性：低频缓慢变化，类似 $1/f$ 噪声。
+                \item \textbf{危害：} 直接积分会导致角度误差随时间 $t$ 二次发散。
+            \end{itemize}
+        \end{block}
+    \end{columns}
+\end{frame}
+
+%------- 第二页：状态扩维建模 -------
+\begin{frame}
+    \frametitle{微电子案例 (2/3)：状态扩维 (Augmented State)}
+    为了消除零偏 (Bias)，我们将未知的 Bias 也视为一个\textbf{“状态”}放入滤波器中进行估计。
+
+    \textbf{系统状态向量：} $\bm{x} = [\theta, \ bias]^T$ 
+    
+    \vspace{0.3cm}
+    \textbf{离散化状态空间模型：}
+    \begin{equation}
+        \begin{bmatrix} \theta_k \\ b_k \end{bmatrix} = 
+        \begin{bmatrix} 1 & -\Delta t \\ 0 & 1 \end{bmatrix} 
+        \begin{bmatrix} \theta_{k-1} \\ b_{k-1} \end{bmatrix} + 
+        \begin{bmatrix} \omega_{mea} \Delta t \\ 0 \end{bmatrix} + \bm{w}_k
+    \end{equation}
+
+    \begin{itemize}
+        \item 第一行：$\theta_k = \theta_{k-1} + (\omega_{mea} - b_{k-1})\Delta t$ \\
+              \small （解释：真实角速度 = 测量值 - 漂移值）
+        \item 第二行：$b_k = b_{k-1} + w_b$ \\
+              \small （解释：假设漂移本身是一个随机游走过程，即 Bias 也是在变的）
+    \end{itemize}
+\end{frame}
+
+%------- 第三页：软件定义精度 -------
+\begin{frame}
+    \frametitle{微电子案例 (3/3)：软件定义硬件精度}
+    通过卡尔曼滤波，我们实现了一种“虚拟传感器”的效果。
+
+    \begin{columns}
+        \column{0.6\textwidth}
+        \textbf{算法流程闭环：}
+        \begin{enumerate}
+            \item \textbf{预测：} 利用上一时刻估算的 Bias 修正当前的陀螺仪读数。
+            \item \textbf{观测：} 引入加速度计或磁力计数据作为“观测值” $z_k$。
+            \item \textbf{校正：} 计算卡尔曼增益 $\bm{K}$，同时更新 \textbf{角度 $\theta$} 和 \textbf{零偏 $b$}。
+        \end{enumerate}
+        
+        \column{0.4\textwidth}
+        \begin{exampleblock}{工程价值}
+            \centering
+            \textbf{精度提升 10$\times$}
+            
+            \raggedright
+            \small
+            利用 KF 算法，可以将售价 \$5 的消费级 MEMS 芯片，提升至接近工业级 (\$50) 的性能表现。
+        \end{exampleblock}
+    \end{columns}
+
+    \vspace{0.5cm}
+    \textit{注：这是自动驾驶、无人机飞控中最底层的核心算法之一。}
 \end{frame}
